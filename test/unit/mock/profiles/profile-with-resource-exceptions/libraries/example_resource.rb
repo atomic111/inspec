@@ -44,6 +44,24 @@ class ExceptionResourceTest < Inspec.resource(1)
     end
   end
 
+  filter = FilterTable.create
+  filter.add_accessor(:where)
+        .add_accessor(:entries)
+        .add(:matters,  field: 'matters')
+        .connect(self, :filters_example)
+
+  private
+
+  def filters_example
+    case @value
+    when 'skip_me'
+      raise Inspec::Exceptions::ResourceSkipped, 'Skipping inside FilterTable'
+    when 'fail_me'
+      raise Inspec::Exceptions::ResourceFailed, 'Failing inside FilterTable'
+    end
+    [{ 'matters' => 'it really does' }]
+  end
+
   def inside_matcher
     case @value
     when 'fail inside matcher'

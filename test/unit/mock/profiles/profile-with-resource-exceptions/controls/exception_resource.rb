@@ -29,3 +29,16 @@ control 'should-work-within-control' do
     its('value') { should eq 'does not matter' }
   end
 end
+
+describe exception_resource_test('skip_me').matters('does not matter') do
+  its('matters') { should eq 'does not matter' }
+end
+
+describe exception_resource_test('fail_me').matters('does not matter') do
+  its('matters') { should eq 'does not matter' }
+end
+
+describe exception_resource_test('should_pass').matters('it really does') do
+  its('matters') { should cmp 'it really does' }
+end
+

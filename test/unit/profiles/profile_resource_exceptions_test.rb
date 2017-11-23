@@ -69,6 +69,26 @@ describe 'resource exception' do
     end
   end
 
+  describe 'within FilterTable' do
+    it 'skips resource when `Inspec::Exceptions::ResourceSkipped` is raised' do
+      checks[6][0][1][0].resource_skipped?.must_equal true
+      checks[6][0][1][0].resource_exception_message.must_equal 'Skipping inside FilterTable'
+      checks[6][0][1][0].resource_failed?.must_equal false
+    end
+
+    it 'fails resource when `Inspec::Exceptions::ResourceFailed` is raised' do
+      checks[7][0][1][0].resource_failed?.must_equal true
+      checks[7][0][1][0].resource_exception_message.must_equal 'Failing inside FilterTable'
+      checks[7][0][1][0].resource_skipped?.must_equal false
+    end
+
+    it 'does not affect regular FilterTable usage' do
+      checks[2][0][1][0].resource_skipped?.must_equal false
+      checks[2][0][1][0].resource_failed?.must_equal false
+      checks[2][0][1][0].resource_exception_message.must_be_nil
+    end
+  end
+
   describe 'when using deprecated `resource_skip` method' do
     it 'warns the user' do
       _, err = capture_io { checks[0][0][1][0].resource_skipped }
