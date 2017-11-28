@@ -6,6 +6,41 @@
 module FilterTable
   module Show; end
 
+  class ExceptionCatcher
+    def initialize(original_resource, original_exception)
+      @original_resource = original_resource
+      @original_exception = original_exception
+    end
+
+    def resource_skipped?
+      @original_exception.is_a?(Inspec::Exceptions::ResourceSkipped)
+    end
+
+    def resource_failed?
+      @original_exception.is_a?(Inspec::Exceptions::ResourceFailed)
+    end
+
+    def resource_exception_message
+      @original_exception.message
+    end
+
+    def method_missing(*args)
+      raise @original_exception
+    end
+
+    # RSpec will check the objected returned to see if it responds to a method before
+    # calling it. We need to fake it out and tell it that it does so it skips past that
+    # check and then falls through to #method_missing so we can raise our original exception.
+    def respond_to?(method)
+      true
+    end
+
+    def to_s
+      @original_resource.to_s
+    end
+    alias :inspect :to_s
+  end
+
   class Trace
     def initialize
       @chain = []
@@ -171,11 +206,20 @@ module FilterTable
       }
 
       # define all access methods with the parent resource
+      # The method will be configured to return a ExceptionCatcher object that
+      # will always return the original exception, but only when called upon.
+      # This will allow method chains in "describe" statements to pass the
+      # instance_eval when loaded and only throw-and-catch the exception when
+      # the tests are run.
       accessors = @accessors + @connectors.keys
       accessors.each do |method_name|
         resource.send(:define_method, method_name.to_sym) do |*args, &block|
-          filter = table.new(self, method(table_accessor).call, ' with')
-          filter.method(method_name.to_sym).call(*args, &block)
+          begin
+            filter = table.new(self, method(table_accessor).call, ' with')
+            filter.method(method_name.to_sym).call(*args, &block)
+          rescue Inspec::Exceptions::ResourceFailed, Inspec::Exceptions::ResourceSkipped => e
+            FilterTable::ExceptionCatcher.new(resource, e)
+          end
         end
       end
     end
